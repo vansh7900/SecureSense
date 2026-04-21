@@ -1,0 +1,81 @@
+services:
+  # Redis Cache (Start first)
+  redis:
+    image: redis:7-alpine
+    container_name: securesense-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - securesense-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Backend API Service
+  securesense-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: securesense-backend
+    ports:
+      - "8002:8000"
+      - "8003:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
+      - HIBP=${HIBP:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - LOG_FILE_PATH=/var/log/securesense/auth.log
+      - PYTHONUNBUFFERED=1
+    networks:
+      - securesense-network
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+
+  # Frontend Service
+  securesense-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: securesense-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      securesense-backend:
+        condition: service_started
+    networks:
+      - securesense-network
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  securesense-network:
+    driver: bridge

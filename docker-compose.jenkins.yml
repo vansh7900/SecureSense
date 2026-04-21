@@ -1,0 +1,129 @@
+# Docker Compose for Jenkins Development/Testing
+# This spins up Jenkins with Docker-in-Docker support for local pipeline testing
+
+version: '3.8'
+
+services:
+  # Jenkins Container
+  jenkins:
+    image: jenkins/jenkins:lts-jdk11
+    container_name: securesense-jenkins
+    user: root
+    ports:
+      - "8080:8080"   # Jenkins UI
+      - "50000:50000" # Jenkins Agent
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/local/bin/docker:/usr/bin/docker
+    environment:
+      - JAVA_OPTS=-Xmx2g -Xms512m
+      - JENKINS_OPTS=--prefix=/jenkins
+      - TZ=UTC
+    networks:
+      - pipeline-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/jenkins/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Docker-in-Docker Service
+  dind:
+    image: docker:dind
+    container_name: securesense-dind
+    privileged: true
+    volumes:
+      - docker_data:/var/lib/docker
+    networks:
+      - pipeline-network
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    restart: unless-stopped
+
+  # Docker Registry for local image storage (optional)
+  registry:
+    image: registry:2
+    container_name: securesense-registry
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - pipeline-network
+    environment:
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+    restart: unless-stopped
+
+  # Redis for caching/session management
+  redis:
+    image: redis:7-alpine
+    container_name: securesense-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pipeline-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # PostgreSQL Database (optional, for backend)
+  postgres:
+    image: postgres:15-alpine
+    container_name: securesense-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pipeline-network
+    environment:
+      - POSTGRES_DB=securesense
+      - POSTGRES_USER=securesense_user
+      - POSTGRES_PASSWORD=change_me_in_production
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U securesense_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: securesense-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - jenkins
+    networks:
+      - pipeline-network
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
+    driver: local
+  docker_data:
+    driver: local
+  registry_data:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  pipeline-network:
+    driver: bridge

@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+pydantic
+numpy
+pandas
+scikit-learn
+xgboost
+joblib
+python-dotenv
+watchdog
+groq
+requests
+psutil
+langchain
+langchain-groq
+langchain-core

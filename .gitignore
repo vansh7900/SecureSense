@@ -1,0 +1,13 @@
+# Large datasets
+*.csv
+app/services/*.csv
+
+# Python
+__pycache__/
+*.pyc
+
+# Env
+.env
+
+# Node
+node_modules/

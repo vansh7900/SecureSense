@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: securesense-frontend
+  namespace: securesense
+  labels:
+    app: securesense-frontend
+    tier: frontend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: securesense-frontend
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: securesense-frontend
+        tier: frontend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+    spec:
+      serviceAccountName: securesense-frontend
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      
+      # Init container - waits for backend to be ready before starting frontend
+      initContainers:
+      - name: wait-for-backend
+        image: curlimages/curl:latest
+        command: ['sh', '-c']
+        args:
+          - |
+            echo "⏳ Waiting for backend service to be ready..."
+            for i in $(seq 1 60); do
+              if curl -s http://securesense-backend:8000/health > /dev/null 2>&1; then
+                echo "✅ Backend is ready!"
+                exit 0
+              fi
+              echo "Attempt $i/60: Backend not ready yet, waiting..."
+              sleep 2
+            done
+            echo "❌ Backend failed to start within 120 seconds"
+            exit 1
+      
+      containers:
+      - name: frontend
+        image: 084041596329.dkr.ecr.us-east-1.amazonaws.com/securesense-frontend:latest  # Update with your registry
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: securesense-config
+        
+        # Resource requests and limits
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        
+        # Liveness and readiness probes
+        livenessProbe:
+          httpGet:
+            path: /index.html
+            port: 80
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        
+        # Startup probe - waits for frontend to be ready to serve
+        startupProbe:
+          httpGet:
+            path: /index.html
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 2
+          timeoutSeconds: 2
+          failureThreshold: 30  # 30 * 2s = 60 seconds max startup time
+        
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        
+        # Volume mounts
+        volumeMounts:
+        - name: cache
+          mountPath: /var/cache/nginx
+        - name: run
+          mountPath: /var/run
+      
+      # Volumes
+      volumes:
+      - name: cache
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+      
+      # Node affinity
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - securesense-frontend
+              topologyKey: kubernetes.io/hostname
+
+---
+# Service Account for frontend
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: securesense-frontend
+  namespace: securesense
