@@ -45,7 +45,7 @@ log_store: List[dict] = []
 analyzer = RiskAnalyzer()
 
 # Simulation mode
-SIMULATION_MODE =False
+SIMULATION_MODE =True
 # MITRE STAGES
 mitre_stages = [
     "Initial Access", "Execution", "Persistence", "Privilege Escalation",

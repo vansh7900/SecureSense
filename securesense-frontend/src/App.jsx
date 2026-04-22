@@ -1117,7 +1117,7 @@ function KpiIcon({ color, bg, shadow, children }) {
 ═══════════════════════════════════════════════════════════ */
 export default function App() {
   const [threats,       setThreats]       = useState([]);
-  const [connected,     setConnected]     = useState(false);
+  const [connected,     setConnected]     = useState(true);
   const [cpu,           setCpu]           = useState(0);
   const [flow,          setFlow]          = useState(0);
   const [search,        setSearch]        = useState("");
@@ -1176,7 +1176,7 @@ export default function App() {
         else if (sev > 4) addToast("New Threat Detected", `${t.prediction || "Unknown"} · Score ${sev}`, "🟠", true);
       }
     };
-    ws.onclose = () => { setConnected(false); setTimeout(connectWS, 3000); };
+    ws.onclose = () => { setConnected(true); setTimeout(connectWS, 3000); };
   };
 
   useEffect(() => {
