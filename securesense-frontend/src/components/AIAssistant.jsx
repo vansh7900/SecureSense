@@ -240,7 +240,8 @@ export default function AIAssistant() {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/chat", { message: q });
+      const API = "https://securesense.onrender.com";
+      const res = await axios.post(`${API}/api/chat`, { message: q });
       setMessages(prev => [...prev, { role: "bot", text: res.data.reply || "No response.", time: now() }]);
     } catch {
       setMessages(prev => [...prev, { role: "bot", text: "⚠ AI assistant unreachable. Check backend connection.", time: now() }]);
