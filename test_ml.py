@@ -19,6 +19,6 @@ for i in range(50):
 end = time.time()
 
 print("Total time:", end-start)
-
+    
 
 print("Requests/sec:", 50/(end-start))

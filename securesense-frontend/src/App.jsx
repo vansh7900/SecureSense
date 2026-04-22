@@ -18,6 +18,7 @@ import TopAttacks from "./components/TopAttacks";
 /* ═══════════════════════════════════════════════════════════
    GLOBAL STYLES — Ultra-Premium Cyber SOC Theme
 ═══════════════════════════════════════════════════════════ */
+const API = "https://securesense.onrender.com";
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@700;800&family=Orbitron:wght@700;900&display=swap');
 
@@ -1163,7 +1164,7 @@ export default function App() {
   };
 
   const connectWS = () => {
-    const ws = new WebSocket(`wss://securesense.onrender.com/ws/alerts`);
+    const ws = new WebSocket("wss://securesense.onrender.com/ws/alerts");
     ws.onopen  = () => { setConnected(true); setInterval(() => ws.send("ping"), 5000); };
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);

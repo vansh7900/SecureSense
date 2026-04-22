@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 
+
+
+const API = "https://securesense.onrender.com";
 const STL = `
   @keyframes msgIn {
     from { opacity:0; transform:translateY(12px) scale(0.94); }
@@ -240,7 +243,6 @@ export default function AIAssistant() {
     setLoading(true);
 
     try {
-      const API = "https://securesense.onrender.com";
       const res = await axios.post(`${API}/api/chat`, { message: q });
       setMessages(prev => [...prev, { role: "bot", text: res.data.reply || "No response.", time: now() }]);
     } catch {
