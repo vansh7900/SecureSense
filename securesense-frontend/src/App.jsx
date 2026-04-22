@@ -1148,22 +1148,22 @@ export default function App() {
 
   const loadThreats = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/api/threats");
+      const res = await axios.get(`${API}/api/threats`);
       setThreats(res.data?.threats || []);
     } catch (e) { console.error(e); }
   };
 
   const loadMetrics = async () => {
     try {
-      const res     = await axios.get("http://127.0.0.1:8000/api/metrics");
-      const flowRes = await axios.get("http://127.0.0.1:8000/api/flow");
+      const res     = await axios.get(`${API}/api/metrics`);
+      const flowRes = await axios.get(`${API}/api/flow`);
       setCpu(res.data.cpu);
       setFlow(flowRes.data.requests_per_sec);
     } catch (e) { console.error(e); }
   };
 
   const connectWS = () => {
-    const ws = new WebSocket("ws://127.0.0.1:8000/ws/alerts");
+    const ws = new WebSocket(`wss://securesense.onrender.com/ws/alerts`);
     ws.onopen  = () => { setConnected(true); setInterval(() => ws.send("ping"), 5000); };
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);

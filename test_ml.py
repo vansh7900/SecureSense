@@ -2,7 +2,7 @@ import requests
 import time
 import random
 
-URL = "http://127.0.0.1:8000/api/logs/ingest"
+URL = "https://securesense.onrender.com/api/logs/ingest"
 
 start = time.time()
 
